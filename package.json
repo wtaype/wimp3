@@ -8,7 +8,8 @@
     "server": "nodemon server.js",
     "client": "vite",
     "start": "node server.js",
-    "build": "vite build"
+    "build": "vite build",
+    "railway:build": "npm run build && npm start"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
