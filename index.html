@@ -1,81 +1,36 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>WIMP3</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 50px auto;
-      padding: 20px;
-      text-align: center;
-    }
-    h1 { color: #6C63FF; }
-    input, button {
-      padding: 10px;
-      margin: 10px;
-      font-size: 16px;
-    }
-    button {
-      background: #6C63FF;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover { background: #5048e5; }
-    #result { margin-top: 20px; }
-    a {
-      display: inline-block;
-      padding: 10px 20px;
-      background: #4CAF50;
-      color: white;
-      text-decoration: none;
-      border-radius: 5px;
-    }
-  </style>
 </head>
 <body>
-  <h1>🎬 WIMP3 Converter</h1>
-  <p>Convierte videos a MP3</p>
-  <input type="file" id="fileInput" accept="video/*">
-  <br>
-  <button id="convertBtn">Convertir a MP3</button>
+  <h1>WIMP3 Converter</h1>
+  <input type="file" id="file" accept="video/*">
+  <button id="btn">Convert</button>
   <div id="result"></div>
 
   <script>
-    // ✅ DETECTAR ENTORNO AUTOMÁTICAMENTE
-    const API = window.location.hostname === 'localhost' 
-      ? 'http://localhost:3000' 
-      : window.location.origin;
+    const API = location.hostname === 'localhost' ? 'http://localhost:3000' : location.origin;
 
-    document.getElementById('convertBtn').onclick = async () => {
-      const file = document.getElementById('fileInput').files[0];
-      if (!file) return alert('Selecciona un video');
+    btn.onclick = async () => {
+      const f = file.files[0];
+      if (!f) return alert('Select video');
 
-      document.getElementById('result').innerHTML = '⏳ Convirtiendo...';
+      result.innerHTML = '⏳ Converting...';
 
-      const formData = new FormData();
-      formData.append('video', file);
+      const fd = new FormData();
+      fd.append('video', f);
 
       try {
-        const res = await fetch(`${API}/convert`, {
-          method: 'POST',
-          body: formData
-        });
-
-        const data = await res.json();
+        const r = await fetch(`${API}/convert`, { method: 'POST', body: fd });
+        const d = await r.json();
         
-        if (data.success) {
-          document.getElementById('result').innerHTML = `
-            ✅ Conversión exitosa<br>
-            <a href="${API}${data.downloadUrl}" download>
-              📥 Descargar MP3 (${(data.size / 1024 / 1024).toFixed(2)} MB)
-            </a>
-          `;
+        if (d.success) {
+          result.innerHTML = `✅ Done<br><a href="${API}${d.downloadUrl}" download>Download MP3 (${(d.size/1024/1024).toFixed(2)}MB)</a>`;
         }
-      } catch (err) {
-        document.getElementById('result').innerHTML = `❌ Error: ${err.message}`;
+      } catch (e) {
+        result.innerHTML = `❌ ${e.message}`;
       }
     };
   </script>

@@ -17,58 +17,51 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// ✅ SERVIR ARCHIVOS ESTÁTICOS
-app.use(express.static(path.join(__dirname, 'dist')));
-
 const uploadsDir = path.join(__dirname, 'uploads');
 const outputDir = path.join(__dirname, 'outputs');
-[uploadsDir, outputDir].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+[uploadsDir, outputDir].forEach(d => !fs.existsSync(d) && fs.mkdirSync(d));
 
-const upload = multer({
-  dest: uploadsDir,
-  limits: { fileSize: 500 * 1024 * 1024 }
-});
+const upload = multer({ dest: uploadsDir, limits: { fileSize: 500*1024*1024 } });
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK' });
-});
+app.get('/health', (req, res) => res.json({ status: 'OK' }));
 
 app.post('/convert', upload.single('video'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
 
-  const outputPath = path.join(outputDir, `${Date.now()}.mp3`);
+  const out = path.join(outputDir, `${Date.now()}.mp3`);
 
   ffmpeg(req.file.path)
     .noVideo()
     .audioBitrate('192k')
     .on('end', () => {
       fs.unlinkSync(req.file.path);
-      const stats = fs.statSync(outputPath);
-      res.json({
-        success: true,
-        filename: path.basename(outputPath),
-        size: stats.size,
-        downloadUrl: `/download/${path.basename(outputPath)}`
+      const s = fs.statSync(out);
+      res.json({ 
+        success: true, 
+        filename: path.basename(out), 
+        size: s.size, 
+        downloadUrl: `/download/${path.basename(out)}` 
       });
     })
-    .on('error', (err) => {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      res.status(500).json({ error: err.message });
+    .on('error', (e) => {
+      fs.existsSync(req.file.path) && fs.unlinkSync(req.file.path);
+      res.status(500).json({ error: e.message });
     })
-    .save(outputPath);
+    .save(out);
 });
 
 app.get('/download/:filename', (req, res) => {
-  const filePath = path.join(outputDir, req.params.filename);
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
-  res.download(filePath);
+  const f = path.join(outputDir, req.params.filename);
+  if (!fs.existsSync(f)) return res.status(404).json({ error: 'Not found' });
+  res.download(f);
 });
 
-// ✅ RUTA CATCH-ALL (para SPA)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
+// ✅ Solo servir HTML en producción
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'dist')));
+  app.use((req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  });
+}
 
 app.listen(PORT, () => console.log(`Server: http://localhost:${PORT}`));
