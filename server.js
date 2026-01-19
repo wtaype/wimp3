@@ -9,8 +9,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -23,32 +22,17 @@ const outputDir = path.join(__dirname, 'outputs');
 
 const upload = multer({ dest: uploadsDir, limits: { fileSize: 500*1024*1024 } });
 
-app.get('/health', (req, res) => res.json({ status: 'OK', ffmpeg: 'ready' }));
+app.get('/', (req, res) => res.json({ status: 'oki' }));
 
 app.post('/convert', upload.single('video'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
-
   const out = path.join(outputDir, `${Date.now()}.mp3`);
-  
-  console.log('Converting:', req.file.path);
-
-  ffmpeg(req.file.path)
-    .noVideo()
-    .audioBitrate('192k')
-    .on('start', cmd => console.log('FFmpeg:', cmd))
+  ffmpeg(req.file.path).noVideo().audioBitrate('192k')
     .on('end', () => {
-      console.log('Done:', out);
       fs.unlinkSync(req.file.path);
-      const s = fs.statSync(out);
-      res.json({ 
-        success: true, 
-        filename: path.basename(out), 
-        size: s.size, 
-        downloadUrl: `/download/${path.basename(out)}` 
-      });
+      res.json({ success: true, size: fs.statSync(out).size, downloadUrl: `/download/${path.basename(out)}` });
     })
     .on('error', (e) => {
-      console.error('FFmpeg Error:', e.message);
       fs.existsSync(req.file.path) && fs.unlinkSync(req.file.path);
       res.status(500).json({ error: e.message });
     })
@@ -57,23 +41,12 @@ app.post('/convert', upload.single('video'), (req, res) => {
 
 app.get('/download/:filename', (req, res) => {
   const f = path.join(outputDir, req.params.filename);
-  if (!fs.existsSync(f)) return res.status(404).json({ error: 'Not found' });
-  res.download(f);
+  fs.existsSync(f) ? res.download(f) : res.status(404).json({ error: 'Not found' });
 });
 
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'dist')));
-  app.use((req, res) => {
-    const indexPath = path.join(__dirname, 'dist', 'index.html');
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      res.status(404).send('index.html not found');
-    }
-  });
+  app.use((req, res) => res.sendFile(path.join(__dirname, 'dist', 'index.html')));
 }
 
-app.listen(PORT, () => {
-  console.log(`Server: http://localhost:${PORT}`);
-  console.log('ENV:', process.env.NODE_ENV);
-});
+app.listen(PORT, () => console.log(`http://localhost:${PORT}`));

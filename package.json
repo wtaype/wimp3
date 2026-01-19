@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"nodemon server.js\" \"vite\"",
+    "dev:live": "concurrently \"nodemon server.js\" \"vite --host\"",
     "server": "nodemon server.js",
     "client": "vite",
     "start": "node server.js",
