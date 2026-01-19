@@ -9,7 +9,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -22,15 +23,25 @@ const outputDir = path.join(__dirname, 'outputs');
 
 const upload = multer({ dest: uploadsDir, limits: { fileSize: 500*1024*1024 } });
 
-app.get('/', (req, res) => res.json({ status: 'oki' }));
+app.get('/health', (req, res) => res.json({ status: 'OK' }));
 
 app.post('/convert', upload.single('video'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
+
   const out = path.join(outputDir, `${Date.now()}.mp3`);
-  ffmpeg(req.file.path).noVideo().audioBitrate('192k')
+
+  ffmpeg(req.file.path)
+    .noVideo()
+    .audioBitrate('192k')
     .on('end', () => {
       fs.unlinkSync(req.file.path);
-      res.json({ success: true, size: fs.statSync(out).size, downloadUrl: `/download/${path.basename(out)}` });
+      const s = fs.statSync(out);
+      res.json({ 
+        success: true, 
+        filename: path.basename(out), 
+        size: s.size, 
+        downloadUrl: `/download/${path.basename(out)}` 
+      });
     })
     .on('error', (e) => {
       fs.existsSync(req.file.path) && fs.unlinkSync(req.file.path);
@@ -41,12 +52,16 @@ app.post('/convert', upload.single('video'), (req, res) => {
 
 app.get('/download/:filename', (req, res) => {
   const f = path.join(outputDir, req.params.filename);
-  fs.existsSync(f) ? res.download(f) : res.status(404).json({ error: 'Not found' });
+  if (!fs.existsSync(f)) return res.status(404).json({ error: 'Not found' });
+  res.download(f);
 });
 
+// ✅ Solo servir HTML en producción
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'dist')));
-  app.use((req, res) => res.sendFile(path.join(__dirname, 'dist', 'index.html')));
+  app.use((req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  });
 }
 
-app.listen(PORT, () => console.log(`http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Server: http://localhost:${PORT}`));
