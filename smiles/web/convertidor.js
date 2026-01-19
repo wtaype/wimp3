@@ -2,7 +2,14 @@ import './convertidor.css';
 import $ from 'jquery';
 import { Mensaje, wiSpin } from '../widev.js';
 
-const API = location.hostname === 'localhost' ? 'http://localhost:3000' : location.origin;
+// ✅ DETECCIÓN DINÁMICA EN RUNTIME (se evalúa en el navegador del usuario)
+const API = (() => {
+  if (typeof window === 'undefined') return '';
+  return window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000' 
+    : window.location.origin;
+})();
+
 let files = [];
 let bitrate = '128k';
 
