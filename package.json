@@ -9,6 +9,7 @@
     "server": "nodemon server.js",
     "client": "vite",
     "start": "node server.js",
+    "railway:build": "npm run build && npm start",
     "build": "vite build"
   },
   "devDependencies": {
